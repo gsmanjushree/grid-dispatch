@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Localized Grid Dispatching Simulator - Micro-Mobility Aggregator</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">⚡</span>
+                    <span class="logo-text">GridDispatch</span>
+                </div>
+                <div class="divider"></div>
+                <span class="subtitle">Micro-Mobility Ride Aggregator & Matching Simulator</span>
+            </div>
+            <div class="header-right">
+                <span class="status-indicator live">● SIMULATION RUNNING</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <!-- Left Side: Simulator Canvas -->
+            <section class="simulator-panel">
+                <div class="card canvas-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h3>Spatial Grid Map View</h3>
+                            <span class="badge" id="grid-dimensions-badge">12 x 12 Grid</span>
+                        </div>
+                        <div class="map-legend">
+                            <span class="legend-item"><span class="dot station"></span>Station (High Demand)</span>
+                            <span class="legend-item"><span class="dot driver-idle"></span>Idle Driver</span>
+                            <span class="legend-item"><span class="dot driver-dispatch"></span>Dispatched</span>
+                            <span class="legend-item"><span class="dot driver-busy"></span>Busy</span>
+                            <span class="legend-item"><span class="dot commuter"></span>Commuter</span>
+                        </div>
+                    </div>
+                    <div class="canvas-container" id="canvas-container">
+                        <canvas id="simulation-canvas"></canvas>
+                        <!-- Heatmap Overlay Toggle Control -->
+                        <div class="canvas-floating-controls">
+                            <button id="toggle-heatmap-btn" class="floating-btn active" title="Toggle Supply/Demand Heatmap">
+                                📊 Heatmap
+                            </button>
+                            <button id="toggle-gridlines-btn" class="floating-btn active" title="Toggle Grid Lines">
+                                🌐 Grid Lines
+                            </button>
+                            <button id="toggle-vectors-btn" class="floating-btn" title="Toggle Rebalancing Vectors">
+                                ↗️ Vectors
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Stats Timeline / Mini charts -->
+                <div class="metrics-strip">
+                    <div class="metric-card">
+                        <div class="metric-label">Match Rate</div>
+                        <div class="metric-value" id="stat-match-rate">0.0%</div>
+                        <div class="metric-trend" id="trend-match-rate">
+                            <span class="trend-sparkline"><canvas id="sparkline-match-rate" width="80" height="20"></canvas></span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Pick-up Time</div>
+                        <div class="metric-value" id="stat-avg-pickup">0.0s</div>
+                        <div class="metric-trend" id="trend-avg-pickup">
+                            <span class="trend-sparkline"><canvas id="sparkline-pickup" width="80" height="20"></canvas></span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Driver Utilization</div>
+                        <div class="metric-value" id="stat-utilization">0.0%</div>
+                        <div class="metric-trend" id="trend-utilization">
+                            <span class="trend-sparkline"><canvas id="sparkline-utilization" width="80" height="20"></canvas></span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total Revenue</div>
+                        <div class="metric-value" id="stat-revenue">$0.00</div>
+                        <div class="metric-trend text-success" id="trend-revenue">+$0.00/m</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg Search Queue</div>
+                        <div class="metric-value" id="stat-queue-length">0</div>
+                        <div class="metric-trend" id="trend-queue-length">Commuters</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Sidebar Controls -->
+            <aside class="control-sidebar">
+                <!-- Simulation State Card -->
+                <div class="card control-card">
+                    <h3>Simulation Controls</h3>
+                    <div class="control-row inline-buttons">
+                        <button id="play-pause-btn" class="btn btn-primary">⏸ Pause</button>
+                        <button id="step-btn" class="btn btn-secondary">⏭ Step</button>
+                        <button id="reset-btn" class="btn btn-danger">🔄 Reset</button>
+                    </div>
+                    <div class="control-group">
+                        <label for="sim-speed">Simulation Speed: <span id="val-sim-speed">1x</span></label>
+                        <input type="range" id="sim-speed" min="0.5" max="5" step="0.5" value="1">
+                    </div>
+                </div>
+
+                <!-- Algorithm Selection Card -->
+                <div class="card control-card">
+                    <h3>Dispatch Algorithm</h3>
+                    <div class="control-group">
+                        <label for="algo-select">Matching Optimization Strategy</label>
+                        <select id="algo-select">
+                            <option value="greedy" selected>Greedy FCFS (Nearest Neighbor)</option>
+                            <option value="batch-hungarian">Localized Batch (Hungarian Matcher)</option>
+                            <option value="proactive-rebalance">Proactive Rebalancing + Local Batch</option>
+                        </select>
+                    </div>
+
+                    <div class="algorithm-info" id="algo-info">
+                        <strong>Greedy FCFS:</strong> Immediately matches waiting commuters to the nearest idle driver. High computational speed, but results in driver-side inefficiency (longer pickup times) and spatial supply deficits.
+                    </div>
+
+                    <div class="control-group collapsible-group">
+                        <div class="collapse-header">
+                            <h4>Hyperparameters</h4>
+                        </div>
+                        <div class="collapse-content">
+                            <div class="control-group">
+                                <label for="param-search-radius">Local Search Radius (K-Ring): <span id="val-search-radius">2 cells</span></label>
+                                <input type="range" id="param-search-radius" min="1" max="5" step="1" value="2">
+                            </div>
+                            <div class="control-group">
+                                <label for="param-batch-window">Batch Window (T seconds): <span id="val-batch-window">3s</span></label>
+                                <input type="range" id="param-batch-window" min="1" max="10" step="1" value="3">
+                            </div>
+                            <div class="control-group" id="rebalance-intensity-control" style="display: none;">
+                                <label for="param-rebalance-rate">Rebalancing Intensity: <span id="val-rebalance-rate">0.5</span></label>
+                                <input type="range" id="param-rebalance-rate" min="0.1" max="1" step="0.1" value="0.5">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spawners & Stress Tests -->
+                <div class="card control-card">
+                    <h3>Demand Generation</h3>
+                    <div class="control-group">
+                        <label for="param-driver-density">Initial Driver Density: <span id="val-driver-density">35</span></label>
+                        <input type="range" id="param-driver-density" min="10" max="100" step="5" value="35">
+                    </div>
+                    <div class="control-group">
+                        <label for="param-demand-rate">Base Commuter Spawn Rate: <span id="val-demand-rate">Medium</span></label>
+                        <input type="range" id="param-demand-rate" min="1" max="3" step="1" value="2">
+                    </div>
+                    <div class="divider"></div>
+                    <div class="control-group">
+                        <label>Simulate Demand Surges (Commuter Influx):</label>
+                        <div class="spawner-buttons">
+                            <button id="surge-metro-btn" class="btn btn-accent btn-sm">🚉 Metro Arrival</button>
+                            <button id="surge-office-btn" class="btn btn-accent btn-sm">🏢 Business Hub Exit</button>
+                            <button id="surge-random-btn" class="btn btn-accent btn-sm">⚡ Random Spikes</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Event Console -->
+                <div class="card control-card console-card">
+                    <div class="card-header-compact">
+                        <h3>Dispatch Event Logs</h3>
+                        <button id="clear-logs-btn" class="text-btn">Clear</button>
+                    </div>
+                    <div class="console-box" id="console-box">
+                        <div class="log-line system">[System] Engine initialized. Select algorithm and press Play.</div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Technical Explanation Drawer -->
+        <section class="explanation-section">
+            <div class="card explanation-card">
+                <h2>Behind the Tech: Localized Grid Dispatching Mathematics</h2>
+                <div class="explanation-grid">
+                    <div class="exp-col">
+                        <h3>1. Spatial Indexing & Complexity Reduction</h3>
+                        <p>
+                            In global fleet dispatching, we run an O((N+M)<sup>3</sup>) algorithm. If a city has 5,000 drivers and 2,000 requests, matching takes trillions of operations. 
+                            <strong>Grid Dispatching</strong> divides the spatial space into cells G<sub>i,j</sub>. Drivers and stations are placed into bucket lists keyed by cell hashes:
+                        </p>
+                        <pre><code>hash(lat, lng) => cell_id(i, j)</code></pre>
+                        <p>
+                            For a cell with active station demand, we define a search ring R<sub>K</sub> of radius K. Matching is limited to:
+                            <div class="math-block">D<sub>cell</sub> &sube; G<sub>i,j</sub> &nbsp;&nbsp;&amp;&nbsp;&nbsp; S<sub>candidates</sub> &sube; &cup;<sub>(u,v)&isin;R<sub>K</sub></sub> G<sub>u,v</sub></div>
+                            This localizes the Hungarian algorithm to isolated sub-problems of size &ll; 50, rendering execution instantaneous and highly parallelizable.
+                        </p>
+                    </div>
+                    <div class="exp-col">
+                        <h3>2. Localized Batch Bipartite Matching</h3>
+                        <p>
+                            Unlike <em>Greedy Nearest Neighbor</em> which immediately claims the closest driver (often causing a sub-optimal global state), 
+                            the <strong>Localized Batch</strong> algorithm waits for a window of T seconds.
+                        </p>
+                        <p>
+                            It aggregates all unassigned requests r &isin; D<sub>local</sub> and available drivers d &isin; S<sub>local</sub> in the search ring. It builds a cost matrix C where:
+                            <div class="math-block">C<sub>r,d</sub> = Distance(r, d) + &alpha; &middot; WaitTime(r)</div>
+                            The algorithm runs the Kuhn-Munkres (Hungarian) matching to find the assignment matching set X that:
+                            <div class="math-block">min &sum;<sub>r,d</sub> C<sub>r,d</sub> X<sub>r,d</sub> &nbsp;&nbsp;&nbsp;&nbsp; s.t. &nbsp;&sum;<sub>d</sub> X<sub>r,d</sub> &le; 1, &nbsp;&sum;<sub>r</sub> X<sub>r,d</sub> &le; 1</div>
+                            This minimizes total pick-up travel distance and wait time variance.
+                        </p>
+                    </div>
+                    <div class="exp-col">
+                        <h3>3. Proactive Grid Rebalancing</h3>
+                        <p>
+                            High-density commuter stations suffer from rapid driver depletion. <strong>Proactive Rebalancing</strong> uses historical/scheduled arrival data to generate demand prediction vectors.
+                        </p>
+                        <p>
+                            If station cell G<sub>i,j</sub> has predicted demand D&#770;<sub>i,j</sub> higher than current supply S<sub>i,j</sub>, a rebalancing potential field F is exerted on idle drivers in adjacent cells:
+                            <div class="math-block">F&#8407;(G<sub>u,v</sub>) = &sum;<sub>(i,j)&isin;&Nu;</sub> [ (D&#770;<sub>i,j</sub> - S<sub>i,j</sub>) / Dist((u,v), (i,j))<sup>2</sup> ] u&#8407;</div>
+                            Idle drivers receive a micro-incentive to drift along the vector F&#8407; (indicated by orange flow vectors on the map), distributing supply ahead of commuter rushes and achieving a high overall match rate.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="dispatch-engine.js"></script>
+    <script src="ui-manager.js"></script>
+</body>
+</html>
