@@ -2,6 +2,8 @@
 
 An interactive web-based simulator and mathematical dashboard demonstrating a **Localized Grid Dispatching Algorithm** tailored for micro-mobility ride aggregators (e.g., bike/scooter-sharing services).
 
+**🌐 Live Demo**: [https://grid-dispatch.netlify.app](https://grid-dispatch.netlify.app)
+
 This project models and visualizes how modern ride-hailing networks solve the matching and rebalancing problems at scale, comparing **Greedy First-Come-First-Served (FCFS)** matching, **Localized Bipartite Hungarian Optimization**, and **Proactive Potential-Field Rebalancing**.
 
 ---
